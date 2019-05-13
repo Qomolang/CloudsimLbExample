@@ -1,10 +1,12 @@
 package main.java.org.cloudsimexample;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import main.java.org.cloudsimexample.util.CompareValues;
@@ -15,10 +17,9 @@ import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.CloudletSchedulerSpaceShared;
-import org.cloudbus.cloudsim.CloudletSchedulerTimeShared;
 import org.cloudbus.cloudsim.Datacenter;
 import org.cloudbus.cloudsim.DatacenterBroker;
-import org.cloudbus.cloudsim.DatacenterBrokerLB;
+import org.cloudbus.cloudsim.DatacenterBrokerLb;
 import org.cloudbus.cloudsim.DatacenterCharacteristics;
 import org.cloudbus.cloudsim.Host;
 import org.cloudbus.cloudsim.Log;
@@ -27,7 +28,6 @@ import org.cloudbus.cloudsim.Storage;
 import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.VmAllocationPolicySimple;
-import org.cloudbus.cloudsim.VmSchedulerSpaceShared;
 import org.cloudbus.cloudsim.VmSchedulerTimeShared;
 
 public class CloudsimLbExample {
@@ -45,21 +45,22 @@ public class CloudsimLbExample {
  			CloudSim.init(num_user, calendar, trace_flag);
  			
  			Datacenter datacenter0 = createDatacenter("Datacenter_0");
- 			DatacenterBrokerLB datacenterBrokerLB = createDatacenterBrokerLB();
+ 			DatacenterBrokerLb broker = createDatacenterBrokerLb();
  			 			
- 			List<Cloudlet> cloudletList = CreateCloudletList(datacenterBrokerLB.getId());
- 			List<Vm> vmList = CreateVmList(datacenterBrokerLB.getId());
+ 			List<Cloudlet> cloudletList = CreateCloudletList(broker.getId());
+ 			List<Vm> vmList = CreateVmList(broker.getId());
  			
- 			datacenterBrokerLB.submitCloudletList(cloudletList);
+ 			broker.submitCloudletList(cloudletList);
  			 			
- 			datacenterBrokerLB.submitVmList(vmList);
+ 			broker.submitVmList(vmList);
  			
  			CloudSim.startSimulation();
  			CloudSim.stopSimulation();
  			
- 			List<Cloudlet> finalExecutionResults = datacenterBrokerLB.getCloudletReceivedList();
+ 			List<Cloudlet> finalExecutionResults = broker.getCloudletReceivedList();
  			
  			printCloudletList(finalExecutionResults);
+ 			writeOutput(finalExecutionResults);
  			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -72,17 +73,12 @@ public class CloudsimLbExample {
 		
 		List<Pe> peList0 = new ArrayList<Pe>();
 		List<Pe> peList1 = new ArrayList<Pe>();
-		//List<Pe> peList2 = new ArrayList<Pe>();
-		//List<Pe> peList3 = new ArrayList<Pe>();
 		
 		List<Host> hostList = new ArrayList<Host>();
 		
 		peList0.add(new Pe(0, new PeProvisionerSimple(2000)));
 		
 		peList1.add(new Pe(1, new PeProvisionerSimple(3000)));
-		
-		//peList2.add(new Pe(2, new PeProvisionerSimple(1500)));
-		//peList3.add(new Pe(3, new PeProvisionerSimple(2000)));
 	
 		int ram = 4096; // host memory (MB)
 		long storage = 1000000; // host storage
@@ -110,28 +106,6 @@ public class CloudsimLbExample {
 				)
 			);
 		
-		/*hostList.add(
-				new Host(
-					2,
-					new RamProvisionerSimple(ram),
-					new BwProvisionerSimple(bw),
-					storage,
-					peList2,
-					new VmSchedulerTimeShared(peList2)
-				)
-			);
-		
-		hostList.add(
-				new Host(
-					3,
-					new RamProvisionerSimple(ram),
-					new BwProvisionerSimple(bw),
-					storage,
-					peList3,
-					new VmSchedulerTimeShared(peList3)
-				)
-			);*/
-		
 		String arch = "x86"; // system architecture
 		String os = "Linux"; // operating system
 		String vmm = "Xen";
@@ -155,11 +129,11 @@ public class CloudsimLbExample {
 		return datacenter;
 	}
 	
-	private static DatacenterBrokerLB createDatacenterBrokerLB() {
-		DatacenterBrokerLB broker = null;
+	private static DatacenterBrokerLb createDatacenterBrokerLb() {
+		DatacenterBrokerLb broker = null;
 		
 		try {
-			broker = new DatacenterBrokerLB("Broker");
+			broker = new DatacenterBrokerLb("Broker");
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -224,7 +198,7 @@ public class CloudsimLbExample {
 		List<Cloudlet> cloudletList = new ArrayList<Cloudlet>();
 		UtilizationModelFull fullUtilize = new UtilizationModelFull();
 		
-		for(int cloudletId = 0; cloudletId < 8; cloudletId++) {
+		for(int cloudletId = 0; cloudletId < 32; cloudletId++) {
 			Cloudlet newCloudlet = new Cloudlet(cloudletId, 4000000, 1, 
 					300, 400, fullUtilize, fullUtilize, fullUtilize);
 			newCloudlet.setUserId(dcbId);
@@ -237,7 +211,8 @@ public class CloudsimLbExample {
 		// Ordenar cloudlets by vm.
 		Collections.sort(list, new CompareValues());
 		
-		
+		double totalFinishTime = 0;
+		double totalCPUTime = 0;
 		int size = list.size();
 		Cloudlet cloudlet;
 
@@ -246,11 +221,13 @@ public class CloudsimLbExample {
 		Log.printLine("========== OUTPUT ==========");
 		Log.printLine("Cloudlet ID" + indent + "STATUS" + indent
 				+ "Data center ID" + indent + "VM ID" + indent + "Time" + indent
-				+ "Start Time" + indent + "Finish Time");
+				+ "Start Time" + indent + "Finish Time" + indent + "Submission Time");
 
 		DecimalFormat dft = new DecimalFormat("###.##");
 		for (int i = 0; i < size; i++) {
 			cloudlet = list.get(i);
+			totalCPUTime += cloudlet.getActualCPUTime();
+			totalFinishTime += cloudlet.getFinishTime();
 			Log.print(indent + cloudlet.getCloudletId() + indent + indent);
 
 			if (cloudlet.getStatus() == Cloudlet.SUCCESS) {
@@ -262,8 +239,44 @@ public class CloudsimLbExample {
 						+ dft.format(cloudlet.getActualCPUTime()) + indent
 						+ indent + dft.format(cloudlet.getExecStartTime())
 						+ indent + indent
-						+ dft.format(cloudlet.getFinishTime()));
+						+ dft.format(cloudlet.getFinishTime())
+						+ indent + indent
+						+ dft.format(cloudlet.getSubmissionTime()));
 			}
+		}
+		Log.printConcatLine("\n ******** TEMPO TOTAL DE EXECUÇÃO: ", totalFinishTime, " ********");
+		Log.printConcatLine("\n ******** TEMPO TOTAL DE CPU: ", totalCPUTime, " ********");
+	}
+	
+	private static void writeOutput(List<Cloudlet> list) {
+		try (PrintWriter writer = new PrintWriter(new File("outPut.csv"))) {
+			StringBuilder sb = new StringBuilder();
+			DecimalFormat dft = new DecimalFormat("###.##");
+			sb.append("Cloudlet ID,");
+			sb.append("Status,");
+			sb.append("Datacenter ID,");
+			sb.append("Vm ID,");
+			sb.append("Time,");
+			sb.append("Finish Time,");
+			sb.append("Submission Time");
+			sb.append("\n");
+			
+			for (Cloudlet cl : list) {
+				sb.append(dft.format(cl.getCloudletId()) + ",");
+				sb.append("SUCCESS,");
+				sb.append(dft.format(cl.getResourceId()) + ",");
+				sb.append(dft.format(cl.getVmId()) + ",");
+				sb.append(dft.format(cl.getActualCPUTime()) + ",");
+				sb.append(dft.format(cl.getFinishTime()) + ",");
+				sb.append(dft.format(cl.getSubmissionDelay()));
+				sb.append("\n");
+			 }
+			 
+			 writer.write(sb.toString());
+			 Log.printConcatLine("\nCSV de saída escrito.");
+			 
+		} catch (FileNotFoundException e) {
+			Log.printConcatLine(e.getMessage());
 		}
 	}
 }

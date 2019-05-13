@@ -1,0 +1,13 @@
+### projects ###
+.project
+*.projects
+
+### settings ###
+*.settings
+
+### classpath ###
+
+*.classpath
+
+### csv ###
+*.csv
