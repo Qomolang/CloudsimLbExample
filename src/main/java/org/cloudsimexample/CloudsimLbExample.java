@@ -32,35 +32,55 @@ import org.cloudbus.cloudsim.VmSchedulerTimeShared;
 
 public class CloudsimLbExample {
 
+	private static List<Cloudlet> cloudletList0 = new ArrayList<Cloudlet>();
+	private static List<Cloudlet> cloudletList1 = new ArrayList<Cloudlet>();;
+	
+	private static List<Vm> vmList0 = new ArrayList<Vm>();
+	private static List<Vm> vmList1 = new ArrayList<Vm>();;
+	
 	public static void main(String[] args) {
 		executeSimulation();
 	}
 	
 	public static void executeSimulation() {
 		try {
-			int num_user = 1;
+			int num_user = 2;
 			Calendar calendar = Calendar.getInstance();
  			boolean trace_flag = false;
  			
  			CloudSim.init(num_user, calendar, trace_flag);
  			
  			Datacenter datacenter0 = createDatacenter("Datacenter_0");
- 			DatacenterBrokerLb broker = createDatacenterBrokerLb();
- 			 			
- 			List<Cloudlet> cloudletList = CreateCloudletList(broker.getId());
- 			List<Vm> vmList = CreateVmList(broker.getId());
+ 			Datacenter datacenter1 = createDatacenter("Datacenter_1");
  			
- 			broker.submitCloudletList(cloudletList);
- 			 			
- 			broker.submitVmList(vmList);
+ 			// Criação de ambos os Datacenters Broker.
+ 			// Broker 0 -> Original Broker
+ 			// Broker 1 -> Balanced Broker
+ 			DatacenterBroker broker0 = createDatacenterBroker(0);
+ 			DatacenterBrokerLb broker1 = createDatacenterBrokerLb(1);
+ 			
+ 			int brokerId0 = broker0.getId();
+ 			int brokerId1 = broker1.getId();
+ 			
+ 			CreateVmList(brokerId0, brokerId1);
+ 			CreateCloudletList(brokerId0, brokerId1);
+ 			
+ 			broker0.submitCloudletList(cloudletList0);
+ 			broker0.submitVmList(vmList0);
+ 			
+ 			broker1.submitCloudletList(cloudletList1);
+ 			broker1.submitVmList(vmList1);
  			
  			CloudSim.startSimulation();
  			CloudSim.stopSimulation();
  			
- 			List<Cloudlet> finalExecutionResults = broker.getCloudletReceivedList();
+ 			List<Cloudlet> finalExecutionResults0 = broker0.getCloudletReceivedList();
+ 			List<Cloudlet> finalExecutionResults1 = broker1.getCloudletReceivedList();
  			
- 			printCloudletList(finalExecutionResults);
- 			writeOutput(finalExecutionResults);
+ 			printCloudletList(finalExecutionResults0);
+ 			printCloudletList(finalExecutionResults1);
+
+ 			//writeOutput(finalExecutionResults, "output.csv");
  			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -77,7 +97,6 @@ public class CloudsimLbExample {
 		List<Host> hostList = new ArrayList<Host>();
 		
 		peList0.add(new Pe(0, new PeProvisionerSimple(2000)));
-		
 		peList1.add(new Pe(1, new PeProvisionerSimple(3000)));
 	
 		int ram = 4096; // host memory (MB)
@@ -125,15 +144,14 @@ public class CloudsimLbExample {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 		return datacenter;
 	}
 	
-	private static DatacenterBrokerLb createDatacenterBrokerLb() {
+	private static DatacenterBrokerLb createDatacenterBrokerLb(int id) {
 		DatacenterBrokerLb broker = null;
 		
 		try {
-			broker = new DatacenterBrokerLb("Broker");
+			broker = new DatacenterBrokerLb("Broker" + id);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -141,12 +159,22 @@ public class CloudsimLbExample {
 		return broker;
 	}
 	
-	private static List<Vm> CreateVmList(int dcbId) {
-		List<Vm> vmList = new ArrayList<Vm>();
+	private static DatacenterBroker createDatacenterBroker(int id) {
+		DatacenterBroker broker = null;
 		
-		vmList.add(new Vm(
+		try {
+			broker = new DatacenterBroker("Broker" + id);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+		return broker;
+	}
+	
+	private static void CreateVmList(int brokerId0, int brokerId1) {
+		vmList0.add(new Vm(
 				0,
-				dcbId,
+				brokerId0,
 				500,
 				1,
 				2048,
@@ -156,9 +184,9 @@ public class CloudsimLbExample {
 				new CloudletSchedulerSpaceShared()
 			));
 		
-		vmList.add(new Vm(
+		vmList0.add(new Vm(
 				1,
-				dcbId,
+				brokerId0,
 				1000,
 				1,
 				2048,
@@ -168,9 +196,9 @@ public class CloudsimLbExample {
 				new CloudletSchedulerSpaceShared()
 			));
 		
-		vmList.add(new Vm(
+		vmList0.add(new Vm(
 				2,
-				dcbId,
+				brokerId0,
 				1500,
 				1,
 				2048,
@@ -180,9 +208,9 @@ public class CloudsimLbExample {
 				new CloudletSchedulerSpaceShared()
 			));
 		
-		vmList.add(new Vm(
+		vmList0.add(new Vm(
 				3,
-				dcbId,
+				brokerId0,
 				2000,
 				1,
 				2048,
@@ -191,20 +219,70 @@ public class CloudsimLbExample {
 				"XEN",
 				new CloudletSchedulerSpaceShared()
 			));
-		return vmList;
+		
+		// Inicio da vmList1
+		vmList1.add(new Vm(
+				0,
+				brokerId1,
+				500,
+				1,
+				2048,
+				5000,
+				500000,
+				"XEN",
+				new CloudletSchedulerSpaceShared()
+			));
+		
+		vmList1.add(new Vm(
+				1,
+				brokerId1,
+				1000,
+				1,
+				2048,
+				5000,
+				500000,
+				"XEN",
+				new CloudletSchedulerSpaceShared()
+			));
+		
+		vmList1.add(new Vm(
+				2,
+				brokerId1,
+				1500,
+				1,
+				2048,
+				5000,
+				500000,
+				"XEN",
+				new CloudletSchedulerSpaceShared()
+			));
+		
+		vmList1.add(new Vm(
+				3,
+				brokerId1,
+				2000,
+				1,
+				2048,
+				5000,
+				500000,
+				"XEN",
+				new CloudletSchedulerSpaceShared()
+			));
 	}
 	
-	private static List<Cloudlet> CreateCloudletList(int dcbId) {
-		List<Cloudlet> cloudletList = new ArrayList<Cloudlet>();
+	private static void CreateCloudletList(int brokerId0, int brokerId1) {
 		UtilizationModelFull fullUtilize = new UtilizationModelFull();
 		
-		for(int cloudletId = 0; cloudletId < 32; cloudletId++) {
-			Cloudlet newCloudlet = new Cloudlet(cloudletId, 4000000, 1, 
+		for(int cloudletId = 0; cloudletId < 8; cloudletId++) {
+			Cloudlet newCloudlet0 = new Cloudlet(cloudletId, 4000000, 1, 
 					300, 400, fullUtilize, fullUtilize, fullUtilize);
-			newCloudlet.setUserId(dcbId);
-			cloudletList.add(newCloudlet);
+			Cloudlet newCloudlet1 = new Cloudlet(cloudletId, 4000000, 1, 
+					300, 400, fullUtilize, fullUtilize, fullUtilize);
+			newCloudlet0.setUserId(brokerId0);
+			newCloudlet1.setUserId(brokerId1);
+			cloudletList0.add(newCloudlet0);
+			cloudletList1.add(newCloudlet1);
 		}
-		return cloudletList;
 	}
 	
 	private static void printCloudletList(List<Cloudlet> list) {
@@ -248,8 +326,8 @@ public class CloudsimLbExample {
 		Log.printConcatLine("\n ******** TEMPO TOTAL DE CPU: ", totalCPUTime, " ********");
 	}
 	
-	private static void writeOutput(List<Cloudlet> list) {
-		try (PrintWriter writer = new PrintWriter(new File("outPut.csv"))) {
+	private static void writeOutput(List<Cloudlet> list, String name) {
+		try (PrintWriter writer = new PrintWriter(new File(name))) {
 			StringBuilder sb = new StringBuilder();
 			DecimalFormat dft = new DecimalFormat("###.##");
 			sb.append("Cloudlet ID,");
