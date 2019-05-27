@@ -1,6 +1,5 @@
 package main.java.org.cloudsimexample;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
@@ -22,8 +21,11 @@ import org.cloudbus.cloudsim.DatacenterBroker;
 import org.cloudbus.cloudsim.DatacenterBrokerIndian;
 import org.cloudbus.cloudsim.DatacenterBrokerLb;
 import org.cloudbus.cloudsim.DatacenterCharacteristics;
+import org.cloudbus.cloudsim.File;
+import org.cloudbus.cloudsim.HarddriveStorage;
 import org.cloudbus.cloudsim.Host;
 import org.cloudbus.cloudsim.Log;
+import org.cloudbus.cloudsim.ParameterException;
 import org.cloudbus.cloudsim.Pe;
 import org.cloudbus.cloudsim.Storage;
 import org.cloudbus.cloudsim.UtilizationModelFull;
@@ -102,6 +104,17 @@ public class CloudsimLbExample {
 	
 	private static Datacenter createDatacenter(String name) {
 		LinkedList<Storage> storageList = new LinkedList<Storage>();
+		HarddriveStorage hd = null;
+		File file1 = null;
+		try {
+			hd = new HarddriveStorage(1024);
+			file1 = new File("file.txt", 300);
+			file1.setOwnerName("brokerId1");
+		} catch (ParameterException e) {
+			e.printStackTrace();
+		}
+		hd.addFile(file1);
+		storageList.add(hd);
 		
 		List<Pe> peList0 = new ArrayList<Pe>();
 		List<Pe> peList1 = new ArrayList<Pe>();
@@ -345,13 +358,16 @@ public class CloudsimLbExample {
 	private static void CreateCloudletList(int brokerId0, int brokerId1, int brokerId2) {
 		UtilizationModelFull fullUtilize = new UtilizationModelFull();
 		
-		for(int cloudletId = 0; cloudletId < 100; cloudletId++) {
+		List<String> fileList = new ArrayList<String>();
+		fileList.add("file.txt");
+		
+		for(int cloudletId = 0; cloudletId < 8; cloudletId++) {
 			Cloudlet newCloudlet0 = new Cloudlet(cloudletId, 4000000, 1, 
-					300, 400, fullUtilize, fullUtilize, fullUtilize);
+					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
 			Cloudlet newCloudlet1 = new Cloudlet(cloudletId, 4000000, 1, 
-					300, 400, fullUtilize, fullUtilize, fullUtilize);
+					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
 			Cloudlet newCloudlet2 = new Cloudlet(cloudletId, 4000000, 1, 
-					300, 400, fullUtilize, fullUtilize, fullUtilize);
+					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
 			newCloudlet0.setUserId(brokerId0);
 			newCloudlet1.setUserId(brokerId1);
 			newCloudlet2.setUserId(brokerId2);
@@ -370,19 +386,19 @@ public class CloudsimLbExample {
 		int size = list.size();
 		Cloudlet cloudlet;
 
-		/*String indent = "    ";
+		String indent = "    ";
 		Log.printLine();
 		Log.printLine("========== OUTPUT ==========");
 		Log.printLine("Cloudlet ID" + indent + "STATUS" + indent
 				+ "Data center ID" + indent + "VM ID" + indent + "Time" + indent
-				+ "Start Time" + indent + "Finish Time" + indent + "Submission Time");*/
+				+ "Start Time" + indent + "Finish Time" + indent + "Submission Time");
 
 		DecimalFormat dft = new DecimalFormat("###.##");
 		for (int i = 0; i < size; i++) {
 			cloudlet = list.get(i);
 			totalCPUTime += cloudlet.getActualCPUTime();
 			totalFinishTime += cloudlet.getFinishTime();
-			/*Log.print(indent + cloudlet.getCloudletId() + indent + indent);
+			Log.print(indent + cloudlet.getCloudletId() + indent + indent);
 
 			if (cloudlet.getStatus() == Cloudlet.SUCCESS) {
 				Log.print("SUCCESS");
@@ -396,14 +412,15 @@ public class CloudsimLbExample {
 						+ dft.format(cloudlet.getFinishTime())
 						+ indent + indent
 						+ dft.format(cloudlet.getSubmissionTime()));
-			}*/
+			}
 		}
 		Log.printConcatLine("\n ******** TEMPO TOTAL DE EXECUÇÃO: ", dft.format(totalFinishTime), " ********");
 		Log.printConcatLine(" ******** TEMPO TOTAL DE CPU: ", dft.format(totalCPUTime), " ********");
 	}
 	
+	
 	private static void writeOutput(List<Cloudlet> list, String name) {
-		try (PrintWriter writer = new PrintWriter(new File(name))) {
+		try (PrintWriter writer = new PrintWriter(new java.io.File(name))) {
 			StringBuilder sb = new StringBuilder();
 			DecimalFormat dft = new DecimalFormat("###.##");
 			sb.append("Cloudlet ID,");
