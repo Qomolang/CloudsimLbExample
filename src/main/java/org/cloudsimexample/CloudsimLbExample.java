@@ -43,21 +43,24 @@ public class CloudsimLbExample {
 	private static List<Vm> vmList1 = new ArrayList<Vm>();
 	private static List<Vm> vmList2 = new ArrayList<Vm>();
 	
+	private static int TAM = 2048;
+	private static int fileSize = 1024;
+	
 	public static void main(String[] args) {
 		executeSimulation();
 	}
 	
 	public static void executeSimulation() {
 		try {
-			int num_user = 3;
+			int num_user = 1;
 			Calendar calendar = Calendar.getInstance();
  			boolean trace_flag = false;
  			
  			CloudSim.init(num_user, calendar, trace_flag);
  			
- 			Datacenter datacenter0 = createDatacenter("Datacenter_0");
+ 			//Datacenter datacenter0 = createDatacenter("Datacenter_0");
  			Datacenter datacenter1 = createDatacenter("Datacenter_1");
- 			Datacenter datacenter2 = createDatacenter("Datacenter_2");
+ 			//Datacenter datacenter2 = createDatacenter("Datacenter_2");
  			
  			// Criação de ambos os Datacenters Broker.
  			// Broker 0 -> Original Broker
@@ -74,27 +77,31 @@ public class CloudsimLbExample {
  			CreateVmList(brokerId0, brokerId1, brokerId2);
  			CreateCloudletList(brokerId0, brokerId1, brokerId2);
  			
- 			broker0.submitCloudletList(cloudletList0);
- 			broker0.submitVmList(vmList0);
+ 			//broker0.submitCloudletList(cloudletList0);
+ 			//broker0.submitVmList(vmList0);
  			
  			broker1.submitCloudletList(cloudletList1);
  			broker1.submitVmList(vmList1);
  			
- 			broker2.submitCloudletList(cloudletList2);
- 			broker2.submitVmList(vmList2);
+ 			//broker2.submitCloudletList(cloudletList2);
+ 			//broker2.submitVmList(vmList2);
  			
  			CloudSim.startSimulation();
  			CloudSim.stopSimulation();
  			
- 			List<Cloudlet> finalExecutionResults0 = broker0.getCloudletReceivedList();
+ 			//List<Cloudlet> finalExecutionResults0 = broker0.getCloudletReceivedList();
  			List<Cloudlet> finalExecutionResults1 = broker1.getCloudletReceivedList();
- 			List<Cloudlet> finalExecutionResults2 = broker2.getCloudletReceivedList();
+ 			//List<Cloudlet> finalExecutionResults2 = broker2.getCloudletReceivedList();
  			
- 			printCloudletList(finalExecutionResults0);
+ 			//printCloudletList(finalExecutionResults0);
  			printCloudletList(finalExecutionResults1);
- 			printCloudletList(finalExecutionResults2);
+ 			//printCloudletList(finalExecutionResults2);
 
- 			//writeOutput(finalExecutionResults, "output.csv");
+ 			//writeOutput(finalExecutionResults0, "noLb.csv");
+ 			writeOutput(finalExecutionResults1, "onlyLb.csv");
+ 			//writeOutput(finalExecutionResults2, "indianLb.csv");
+ 			
+ 			Log.printConcatLine(datacenter1.getMigrateCost());
  			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -107,8 +114,8 @@ public class CloudsimLbExample {
 		HarddriveStorage hd = null;
 		File file1 = null;
 		try {
-			hd = new HarddriveStorage(1024);
-			file1 = new File("file.txt", 300);
+			hd = new HarddriveStorage(20000);
+			file1 = new File("file.txt", fileSize);
 			file1.setOwnerName("brokerId1");
 		} catch (ParameterException e) {
 			e.printStackTrace();
@@ -357,17 +364,26 @@ public class CloudsimLbExample {
 	
 	private static void CreateCloudletList(int brokerId0, int brokerId1, int brokerId2) {
 		UtilizationModelFull fullUtilize = new UtilizationModelFull();
-		
 		List<String> fileList = new ArrayList<String>();
 		fileList.add("file.txt");
 		
-		for(int cloudletId = 0; cloudletId < 8; cloudletId++) {
-			Cloudlet newCloudlet0 = new Cloudlet(cloudletId, 4000000, 1, 
+		long clSize = 4000000;
+		boolean changeSize = false;
+	
+		long leftLimit = 1000000L;
+	    long rightLimit = 4000000L; 
+		
+		for(int cloudletId = 0; cloudletId < TAM; cloudletId++) {
+			if (changeSize == true)
+				clSize = leftLimit + (long) (Math.random() * (rightLimit - leftLimit));
+			
+			Cloudlet newCloudlet0 = new Cloudlet(cloudletId, clSize, 1, 
+					300, 400, fullUtilize, fullUtilize, fullUtilize);
+			Cloudlet newCloudlet1 = new Cloudlet(cloudletId, clSize, 1, 
 					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
-			Cloudlet newCloudlet1 = new Cloudlet(cloudletId, 4000000, 1, 
-					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
-			Cloudlet newCloudlet2 = new Cloudlet(cloudletId, 4000000, 1, 
-					300, 400, fullUtilize, fullUtilize, fullUtilize, fileList);
+			Cloudlet newCloudlet2 = new Cloudlet(cloudletId, clSize, 1, 
+					300, 400, fullUtilize, fullUtilize, fullUtilize);
+			
 			newCloudlet0.setUserId(brokerId0);
 			newCloudlet1.setUserId(brokerId1);
 			newCloudlet2.setUserId(brokerId2);
@@ -418,28 +434,30 @@ public class CloudsimLbExample {
 		Log.printConcatLine(" ******** TEMPO TOTAL DE CPU: ", dft.format(totalCPUTime), " ********");
 	}
 	
-	
 	private static void writeOutput(List<Cloudlet> list, String name) {
+		Collections.sort(list, new CompareValues());
+		
 		try (PrintWriter writer = new PrintWriter(new java.io.File(name))) {
 			StringBuilder sb = new StringBuilder();
 			DecimalFormat dft = new DecimalFormat("###.##");
-			sb.append("Cloudlet ID,");
+			/*sb.append("#Cloudlet ID,");
 			sb.append("Status,");
 			sb.append("Datacenter ID,");
 			sb.append("Vm ID,");
 			sb.append("Time,");
 			sb.append("Finish Time,");
 			sb.append("Submission Time");
-			sb.append("\n");
+			sb.append("\n");*/
 			
 			for (Cloudlet cl : list) {
 				sb.append(dft.format(cl.getCloudletId()) + ",");
 				sb.append("SUCCESS,");
-				sb.append(dft.format(cl.getResourceId()) + ",");
+				sb.append(name.split("\\.")[0] + ",");
+				sb.append(fileSize + ",");
 				sb.append(dft.format(cl.getVmId()) + ",");
-				sb.append(dft.format(cl.getActualCPUTime()) + ",");
-				sb.append(dft.format(cl.getFinishTime()) + ",");
-				sb.append(dft.format(cl.getSubmissionDelay()));
+				sb.append(dft.format(cl.getActualCPUTime()).replace(",", ".") + ",");
+				sb.append(dft.format(cl.getFinishTime()).replace(",", ".") + ",");
+				sb.append(dft.format(cl.getSubmissionDelay()).replace(",", "."));
 				sb.append("\n");
 			 }
 			 
