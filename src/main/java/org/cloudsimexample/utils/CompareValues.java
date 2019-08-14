@@ -1,4 +1,4 @@
-package main.java.org.cloudsimexample.util;
+package main.java.org.cloudsimexample.utils;
 
 import java.util.Comparator;
 
@@ -12,7 +12,7 @@ public class CompareValues implements Comparator<Cloudlet> {
 	
 	// Ordenar por ID da Cloudlet.
 	public int compare(Cloudlet cl1, Cloudlet cl2) {
-		return cl1.getCloudletId() - cl2.getCloudletId();
+		return Double.compare(cl1.getFinishTime(), cl2.getFinishTime());
 	}
 	
 	// Ordenar pelo Tamanho da Cloudlet
